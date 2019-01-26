@@ -8,7 +8,7 @@ let _ = require('underscore'),
 
 module.exports = function (dbconfig) {
 
-    if(!dbconfig.port){
+    if (!dbconfig.port) {
         dbconfig.port = 27017;
     }
 
@@ -39,8 +39,9 @@ module.exports = function (dbconfig) {
         url = `mongodb://${dbconfig.host}:${dbconfig.port}`,
         // pool = mysql.createPool(dbconfig),
         connect = function (cb) {
-            console.log('Connecting...')
-            pool.connect(url,{useNewUrlParser: true }, function (err, conn) {
+            pool.connect(url, {
+                useNewUrlParser: true
+            }, function (err, conn) {
                 if (err) {
                     return (cb && cb(err));
                 }
@@ -76,7 +77,7 @@ module.exports = function (dbconfig) {
             });
         },
         toString = function (o) {
-            return o? '' + o.toString() : '';
+            return o ? '' + o.toString() : '';
         },
         stringWrap = function (o) {
             var raw = toString(o);
@@ -102,79 +103,138 @@ module.exports = function (dbconfig) {
             }
             return arr;
         },
-        
+
         addWheres = function (key, value) {
             // console.log('key:',key, ' val: ', value);
-            this.wheres[key] = value;
+            // column = hasOperator(column) ? column : "%s =".format(column);
+
+            let string = key.trim();
+            if (string.endsWith("<>") || string.endsWith('!=')) {
+                string = string.replace(/<>/, '');
+                this.wheres[string.trim()] = {
+                    "$ne": value
+                };
+            } else if (string.endsWith(">")) {
+                string = string.replace(/>/, '');
+                this.wheres[string.trim()] = {
+                    "$gt": value
+                };
+            } else if (string.endsWith(">=")) {
+                string = string.replace(/>=/, '');
+                this.wheres[string.trim()] = {
+                    "$gte": value
+                };
+            } else if (string.endsWith("<")) {
+                string = string.replace(/</, '');
+                this.wheres[string.trim()] = {
+                    "$lt": value
+                };
+            } else if (string.endsWith("<=")) {
+                string = string.replace(/<=/, '');
+                this.wheres[string.trim()] = {
+                    "$lte": value
+                };
+            } else {
+                this.wheres[string] = value;
+            }
+
         },
-        
+
         addSets = function (key, value) {
             this.sets[key] = value;
         },
-        
+
 
         reset = function () {
-            this.offset = 0;
-            this.lim = 0;
-            this.order = "ASC";
-            this.isdistinct = false;
-            this.froms = null;
-            this.wheres = {};
-            this.sets = {};
+            mongodb.offset = 0;
+            mongodb.lim = 0;
+            mongodb.order = "ASC";
+            mongodb.orderby = [];
+            mongodb.groupby = [];
+            mongodb.noDuplicate = null;
+            mongodb.froms = null;
+            mongodb.wheres = {};
+            mongodb.sets = {};
+            mongodb.size = 0;
+
             return this;
         };
 
     let mongodb = {
         lastQuery: '',
         debug: false,
-        distinct: function () {
-            // this.isdistinct = true;
-            console.log('distinct not supported yet');
+        distinct: function (column) {
+            this.noDuplicate = column;
+            // console.log('distinct not supported yet');
             return this;
         },
         limit: function (lim, offset) {
-            // this.lim = lim;
-            // this.offset = offset || 0;
-            console.log('limit not supported yet');
+            this.lim = lim;
+            this.offset = offset || 0;
             return this;
         },
-        query:function (lim, offset) {
+        
+        count:function(){
+            this.size = 1;
+            return this;
+        },
+        groupBy:function(){
+            // this.groupby = trim(columns.split(","));
+            // return this;
             console.log('query not supported yet');
             return this;
         },
-        orderBy: function () {
-            console.log('orderBy not supported yet');
+        orderBy: function (columns, direction) {
+            direction = direction ? direction.toLowerCase() : 'asc'
+            this.orderby.push([columns, (direction === 'asc') ? 1 : -1]);
             return this;
         },
-       
+
         from: function (from) {
             this.froms = from;
             return this;
         },
         where: function (column, value) {
             if (arguments.length < 2) return this;
-            // value = _.isString(value) ? stringWrap(value) : toString(value);
-            // column = hasOperator(column) ? column : "%s =".format(column);
             addWheres.call(this, column, value);
             return this;
         },
+        like: function (column, value) {
+            if (arguments.length < 2) return this;
+            this.wheres[column] = new RegExp(value.toString(), 'i');
+            return this;
+        },
+        whereIn: function (column, value) {
+            if (arguments.length < 2) return this;
+            this.wheres[column] = {
+                "$in": value
+            }
+            return this;
+        },
+        whereNotIn: function (column, value) {
+            if (arguments.length < 2) return this;
+            this.wheres[column] = {
+                "$nin": value
+            }
+            return this;
+        },
         set: function (column, value) {
-            // value = _.isString(value) ? stringWrap(value) : toString(value);
-            // column = hasOperator(column) ? column : "%s =".format(column);
             addSets.call(this, column, value);
             return this;
         },
-        
+
         insert: function (table, options, cb) {
-            reset.call(this);
+            reset();
             const collection = this.db.collection(table);
-            collection[_.isArray(options)? 'insertMany' : 'insertOne'](options,function (err, result) {
+            collection[_.isArray(options) ? 'insertMany' : 'insertOne'](options, function (err, result) {
                 if (err) {
                     return (cb && cb(err));
                 }
 
-                let {ops} = result;
-                if(ops.length && !_.isArray(options)){
+                let {
+                    ops
+                } = result;
+                if (ops.length && !_.isArray(options)) {
                     ops = ops[0];
                 }
                 (cb && cb(false, ops));
@@ -184,89 +244,133 @@ module.exports = function (dbconfig) {
         },
         fetch: function (tableOrCb, cb) {
 
-                if (_.isFunction(tableOrCb)) {
-                    if (_.isNull(this.froms)) {
-                        var e = Error("No table specified for select statement.");
-                        console.error(e);
-                        reset.call(this);
-                        return (cb && cb(e));
-                    }
-                    cb = tableOrCb;
-                } else if (_.isString(tableOrCb)) {
-
-                    this.froms = tableOrCb;
-
-                } else {
-                    var err = new Error("No table or callback specified for select statement.");
-                    console.error(err);
-                    reset.call(this);
-                    return (cb && cb(err));
+            if (_.isFunction(tableOrCb)) {
+                if (_.isNull(this.froms)) {
+                    var e = Error("No table specified for select statement.");
+                    console.error(e);
+                    reset();
+                    return (cb && cb(e));
                 }
+                cb = tableOrCb;
+            } else if (_.isString(tableOrCb)) {
 
-                // console.log('Table: ', this.froms)
-                // console.log('Where: ', this.wheres)
-                const collection = this.db.collection(this.froms);
-                collection.find(this.wheres).toArray(function (err, items) {
+                this.froms = tableOrCb;
+
+            } else {
+                var err = new Error("No table or callback specified for select statement.");
+                console.error(err);
+                reset();
+                return (cb && cb(err));
+            }
+
+            // console.log('Table: ', this.froms)
+            // console.log('Where: ', this.wheres)
+            const collection = this.db.collection(this.froms);
+            let _opt = {
+                skip: this.offset,
+                sort: this.orderby,
+                limit: this.lim
+            };
+            if(this.size){
+                return collection.countDocuments(this.wheres, function(err, result){
                     if (err) {
-                        reset.call(this);
+                        reset();
                         return (cb && cb(err));
                     }
-                    reset.call(this);
+                    reset();
+                    (cb && cb(false, result));
+                })
+            }
+
+            if(this.noDuplicate){
+                return collection.distinct(this.noDuplicate, this.wheres, _opt, function(err, items){
+                    if (err) {
+                        reset();
+                        return (cb && cb(err));
+                    }
+                    reset();
                     (cb && cb(false, items));
-                });
+                })
+            }
+
+            // if(this.groupby.length){
+            //     return collection.group(this.groupby, this.wheres, function(err, result){
+            //         if (err) {
+            //             reset();
+            //             return (cb && cb(err));
+            //         }
+            //         reset();
+            //         (cb && cb(false, result));
+            //     })
+            // }
+            // console.log('Options: ', _opt);
+            collection.find(this.wheres, _opt).toArray(function (err, items) {
+                if (err) {
+                    reset();
+                    return (cb && cb(err));
+                }
+                reset();
+                (cb && cb(false, items));
+            });
 
         },
         update: function (table, cb) {
-            
+
             if (_.isNull(this.sets)) {
 
                 var err = Error("No fields to be set in update statement.");
                 return (cb && cb(err));
             }
 
-            
+
             const collection = this.db.collection(table);
             // console.log('set: ', this.sets)
             // let load = JSON.stringify(this.sets);
             // console.log('load: ', load);
             // load = JSON.parse(load);
             // console.log('load: ', );
-            collection.updateOne(this.wheres, {'$set':this.sets},function (err, result) {
+            collection.updateMany(this.wheres, {
+                '$set': this.sets
+            }, function (err, result) {
                 if (err) {
-                    reset.call(this);
+                    reset();
                     return (cb && cb(err));
                 }
-                reset.call(this);
-                (cb && cb(false, {affectedRows: result.modifiedCount}));
+                reset();
+                (cb && cb(false, {
+                    affectedRows: result.modifiedCount
+                }));
             })
- 
+
         },
         delete: function (table, options, cb) {
 
             if (options && _.isFunction(options)) {
                 cb = options;
-               
+
             } else if (options && _.isObject(options)) {
 
                 this.wheres = options;
             }
 
             const collection = this.db.collection(table);
-            collection.deleteMany(this.wheres,function (err, result) {
+            collection.deleteMany(this.wheres, function (err, result) {
                 if (err) {
-                    reset.call(this);
+                    reset();
                     return (cb && cb(err));
                 }
-                reset.call(this);
+                reset();
                 // console.log('result: ', result)
-                (cb && cb(false, {affectedRows: result.deletedCount}));
+                (cb && cb(false, {
+                    affectedRows: result.deletedCount
+                }));
             });
-            
+
 
         },
         init: function () {
             this.debug = dbconfig.debug_db || false;
-            return reset.call(this);
+            return reset();
         }
     };
 
