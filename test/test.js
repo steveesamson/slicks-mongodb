@@ -56,25 +56,26 @@ describe('#Slicks-MongoDB', function () {
     });
    
     describe('#Insert with "insert" ', function () {
-        it('Should insert into "task_owners" collection without error and return insert id that equals 1', function (done) {
-            db.insert('task_owners', {id: 1, name: 'Test owner'}, function (err, res) {
+        it('Should insert into "task_owners" collection without error and return insert id that is defined', function (done) {
+            db.insert('task_owners', {idd: 1, name: 'Test owner'}, function (err, res) {
                 if (err) {
                     throw err;
                 }
                 
-                res.id.should.equal(1);
+                // console.log('res: ', res);
+                res.id.should.be.defined;
                 done();
             });
         });
     });
 
     describe('#Insert with "insert" ', function () {
-        it('Should insert into "todo" collection without error and return insert id that equals 1', function (done) {
-            db.insert('todo', {id: 1, task: 'Do dishes', task_owner: 1}, function (err, res) {
+        it('Should insert into "todo" collection without error and return insert id that is defined', function (done) {
+            db.insert('todo', {idd: 1, task: 'Do dishes', task_owner: 1}, function (err, res) {
                 if (err) {
                     throw err;
                 }
-                res.id.should.equal(1);
+                res.id.should.be.defined;
                 done();
             });
         });
@@ -85,7 +86,7 @@ describe('#Slicks-MongoDB', function () {
     
     describe('#Insert multiple with "query"', function () {
         it('Should insert multiple records into "todo" collection with "insert" without error', function (done) {
-            var q = [{id:2, task:'Vacuum the floor', task_owner:1}, {id:3, task:'VIron my shirt', task_owner:1}]; 
+            var q = [{idd:2, task:'Vacuum the floor', task_owner:1}, {idd:3, task:'VIron my shirt', task_owner:1}]; 
             db.insert('todo', q, function (err, res) {
                 if (err) {
                     throw err;
@@ -112,10 +113,24 @@ describe('#Slicks-MongoDB', function () {
     });
 
 
+    describe('#Like records', function () {
+        it('Should retrieve all records in "todo"  collection with tasks like \'V\', records length should be 2', function (done) {
+            db.like("task", 'V').fetch('todo', function (err, rows) {
+                if (err) {
+                    console.error(err)
+                    throw err;
+                }
+                rows.should.have.length(2);
+                done();
+            });
+        });
+    });
+
+
 
     describe('#WhereIn records', function () {
-        it('Should retrieve all records in "todo"  collection with id of 2 or 3 without error, records length should be 2', function (done) {
-            db.whereIn("id", [2,3]).fetch('todo', function (err, rows) {
+        it('Should retrieve all records in "todo"  collection with idd of 2 or 3 without error, records length should be 2', function (done) {
+            db.whereIn("idd", [2,3]).fetch('todo', function (err, rows) {
                 if (err) {
                     console.error(err)
                     throw err;
@@ -128,8 +143,8 @@ describe('#Slicks-MongoDB', function () {
     });
 
     describe('#WhereNotIn records', function () {
-        it('Should retrieve all records in "todo"  collection with id not of 2 or 3 without error, records length should be 1', function (done) {
-            db.whereNotIn("id", [2,3]).fetch('todo', function (err, rows) {
+        it('Should retrieve all records in "todo"  collection with idd not of 2 or 3 without error, records length should be 1', function (done) {
+            db.whereNotIn("idd", [2,3]).fetch('todo', function (err, rows) {
                 if (err) {
                     console.error(err)
                     throw err;
@@ -157,16 +172,16 @@ describe('#Slicks-MongoDB', function () {
 
  
     describe('#Where clause', function () {
-        it('Should retrieve ONLY ONE record, from  "todo"  collection, record id should equal 2', function (done) {
+        it('Should retrieve ONLY ONE record, from  "todo"  collection, record idd should equal 2', function (done) {
                 db.from('todo')
-                .where('id', 2)
+                .where('idd', 2)
                 .fetch(function (err, rows) {
                     if (err) {
                         throw err;
                     }
                     rows.should.have.length(1);
                     var rec = rows[0];
-                    rec.id.should.equal(2);
+                    rec.idd.should.equal(2);
                     done();
                 });
         });
@@ -175,8 +190,8 @@ describe('#Slicks-MongoDB', function () {
    
 
     describe('#GreaterThan clause', function () {
-        it('Should retrieve all records with id greater than 1 in "todo"  collection with "where >" without error, records length should be 2', function (done) {
-            db.where('id >', 1)
+        it('Should retrieve all records with idd greater than 1 in "todo"  collection with "where >" without error, records length should be 2', function (done) {
+            db.where('idd >', 1)
                 .fetch('todo', function (err, rows) {
                     if (err) {
                         throw err;
@@ -191,8 +206,8 @@ describe('#Slicks-MongoDB', function () {
      
 
     describe('#GreaterThanOrEquals clause', function () {
-        it('Should retrieve all records with id greater than  or equals 1 in "todo"  collection with "where >=" without error, records length should be 3', function (done) {
-            db.where('id >=', 1)
+        it('Should retrieve all records with idd greater than  or equals 1 in "todo"  collection with "where >=" without error, records length should be 3', function (done) {
+            db.where('idd >=', 1)
                 .fetch('todo', function (err, rows) {
                     if (err) {
                         throw err;
@@ -206,8 +221,8 @@ describe('#Slicks-MongoDB', function () {
 
 
     describe('#LessThan clause', function () {
-        it('Should retrieve all records with id less than 2 in "todo"  collection with "where <" without error, records length should be 1', function (done) {
-            db.where('id <', 2)
+        it('Should retrieve all records with idd less than 2 in "todo"  collection with "where <" without error, records length should be 1', function (done) {
+            db.where('idd <', 2)
                 .fetch('todo', function (err, rows) {
                     if (err) {
                         throw err;
@@ -220,8 +235,8 @@ describe('#Slicks-MongoDB', function () {
     });
   
     describe('#LessThanOrEquals clause', function () {
-        it('Should retrieve all records with id less than  or equals 2 in "todo"  collection with "where <=" without error, records length should be 2', function (done) {
-            db.where('id <=', 2)
+        it('Should retrieve all records with idd less than  or equals 2 in "todo"  collection with "where <=" without error, records length should be 2', function (done) {
+            db.where('idd <=', 2)
                 .fetch('todo', function (err, rows) {
                     if (err) {
                         throw err;
@@ -249,15 +264,15 @@ describe('#Slicks-MongoDB', function () {
  
    
     describe('#OrderBy DESC clause', function () {
-        it('Should retrieve ALL records in "todo"  collection with "orderby" of "desc" without error, records length should be 3, first record id should be 3', function (done) {
-            db.orderBy('id', 'desc')
+        it('Should retrieve ALL records in "todo"  collection with "orderby" of "desc" without error, records length should be 3, first record idd should be 3', function (done) {
+            db.orderBy('idd', 'desc')
                 .fetch('todo', function (err, rows) {
                     if (err) {
                         throw err;
                     }
                     // console.log("Got: ", rows);
                     rows.should.have.length(3);
-                    rows[0].id.should.equal(3);
+                    rows[0].idd.should.equal(3);
                     done();
                 });
         });
@@ -265,28 +280,28 @@ describe('#Slicks-MongoDB', function () {
 
    
     describe('#OrderBy ASC clause', function () {
-        it('Should retrieve ALL records in "todo"  collection with "orderby" of "asc"  without error, records length should be 3, first record id should be 1', function (done) {
-            db.orderBy('id', 'asc')
+        it('Should retrieve ALL records in "todo"  collection with "orderby" of "asc"  without error, records length should be 3, first record idd should be 1', function (done) {
+            db.orderBy('idd', 'asc')
                 .fetch('todo', function (err, rows) {
                     if (err) {
                         throw err;
                     }
                     rows.should.have.length(3);
-                    rows[0].id.should.equal(1);
+                    rows[0].idd.should.equal(1);
                     done();
                 });
         });
     });
  
     describe('#OrderBy clause', function () {
-        it('Should retrieve ALL records in "todo"  collection with just "orderby"  without error, records length should be 3, first record id should be 1', function (done) {
-            db.orderBy('id')
+        it('Should retrieve ALL records in "todo"  collection with just "orderby"  without error, records length should be 3, first record idd should be 1', function (done) {
+            db.orderBy('idd')
                 .fetch('todo', function (err, rows) {
                     if (err) {
                         throw err;
                     }
                     rows.should.have.length(3);
-                    rows[0].id.should.equal(1);
+                    rows[0].idd.should.equal(1);
                     done();
                 });
         });
@@ -299,7 +314,7 @@ describe('#Slicks-MongoDB', function () {
         it('Should update "todo" collection. Should return 1 as number of affectedRows', function (done) {
 
             db.set('task', 'Updated Todo')
-                .where('id', 1)
+                .where('idd', 1)
                 .update('todo', function (err, res) {
                     if (err) {
                         throw err;
@@ -314,10 +329,10 @@ describe('#Slicks-MongoDB', function () {
 
 
     describe('#Update ', function () {
-        it('Should update "todo" collection using id > 1. Should return 2 as number of affectedRows', function (done) {
+        it('Should update "todo" collection using idd > 1. Should return 2 as number of affectedRows', function (done) {
 
             db.set('task', 'Update two records in Todo')
-                .where('id >', 1)
+                .where('idd >', 1)
                 .update('todo', function (err, res) {
                     if (err) {
                         throw err;
@@ -348,7 +363,7 @@ describe('#Slicks-MongoDB', function () {
     describe('#Delete ', function () {
         it('Should delete from "todo" collection and return 2 as number of affectedRows', function (done) {
 
-            db.where('id >', 1)
+            db.where('idd >', 1)
                 .delete('todo', function (err, res) {
                     if (err) {
                         throw err;

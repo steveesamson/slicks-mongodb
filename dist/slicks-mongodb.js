@@ -4,7 +4,8 @@
  * Updated on March 13, 2017.
  */
 let _ = require('underscore'),
-    pool = require('mongodb').MongoClient;
+    pool = require('mongodb').MongoClient,
+    OID = require('mongodb').ObjectID;
 
 module.exports = function (dbconfig) {
 
@@ -45,7 +46,7 @@ module.exports = function (dbconfig) {
                 if (err) {
                     return (cb && cb(err));
                 }
-                console.log('Obtained new connection on mongodb.');
+                // console.log('Obtained new connection on mongodb.');
                 var db_connection = {
                     connection: conn,
                     db: conn.db(dbconfig.database),
@@ -79,23 +80,6 @@ module.exports = function (dbconfig) {
         toString = function (o) {
             return o ? '' + o.toString() : '';
         },
-        stringWrap = function (o) {
-            var raw = toString(o);
-
-            return (raw.indexOf("'") != -1) ? raw : "'%s'".format(raw);
-        },
-        cleantAt = function (string) {
-
-            return string.replace(new RegExp("@", 'g'), '%');
-        },
-        hasOperator = function (string) {
-            var has = false;
-            string = string.trim();
-            if (string.endsWith(">") || string.endsWith(">=") || string.endsWith("<=") || string.endsWith("<") || string.endsWith("<>") || string.endsWith("!=")) {
-                has = true;
-            }
-            return has;
-        },
         trim = function (arr) {
 
             for (var i = 0; i < arr.length; ++i) {
@@ -105,8 +89,6 @@ module.exports = function (dbconfig) {
         },
 
         addWheres = function (key, value) {
-            // console.log('key:',key, ' val: ', value);
-            // column = hasOperator(column) ? column : "%s =".format(column);
 
             let string = key.trim();
             if (string.endsWith("<>") || string.endsWith('!=')) {
@@ -135,6 +117,10 @@ module.exports = function (dbconfig) {
                     "$lte": value
                 };
             } else {
+                if(string === 'id'){
+                    string = "_id";
+                    value = new OID(value);
+                }
                 this.wheres[string] = value;
             }
 
@@ -161,11 +147,11 @@ module.exports = function (dbconfig) {
         };
 
     let mongodb = {
+        storeType: 'mongodb',
         lastQuery: '',
         debug: false,
         distinct: function (column) {
             this.noDuplicate = column;
-            // console.log('distinct not supported yet');
             return this;
         },
         limit: function (lim, offset) {
@@ -231,13 +217,14 @@ module.exports = function (dbconfig) {
                     return (cb && cb(err));
                 }
 
-                let {
-                    ops
-                } = result;
-                if (ops.length && !_.isArray(options)) {
-                    ops = ops[0];
+               
+
+                if (!_.isArray(options)) {
+                    
+                   return  (cb && cb(false, {id:result.insertedId}));
                 }
-                (cb && cb(false, ops));
+
+                (cb && cb(false, result.ops));
             });
 
 
@@ -310,6 +297,7 @@ module.exports = function (dbconfig) {
                     return (cb && cb(err));
                 }
                 reset();
+                items.forEach(i =>{ i.id = i._id; });
                 (cb && cb(false, items));
             });
 
