@@ -1,6 +1,6 @@
 {
   "name": "slicks-mongodb",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Allows the writing of expressive database queries while targeting mongodb.",
   "main": "dist/slicks-mongodb",
   "license": "MIT",
