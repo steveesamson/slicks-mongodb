@@ -49,6 +49,8 @@ module.exports = function (dbconfig) {
                 // console.log('Obtained new connection on mongodb.');
                 var db_connection = {
                     connection: conn,
+                    cdc:dbconfig.cdc,
+                    maillog:dbconfig.maillog,
                     db: conn.db(dbconfig.database),
                     release: function () {
                         if (this.debug) {
